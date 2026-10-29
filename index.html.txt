@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大乐透真实数据高级选号器</title>
+    <style>
+        :root {
+            --primary-color: #e03131;
+            --secondary-color: #1971c2;
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .app-container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 600px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #e03131, #c92a2a);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 { margin: 0; font-size: 22px; }
+        .header p { margin: 5px 0 0; opacity: 0.9; font-size: 14px; }
+
+        .analysis-panel {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .panel-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .legend { font-size: 12px; color: #666; }
+
+        .number-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .grid-item {
+            aspect-ratio: 1;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            font-weight: bold;
+            position: relative;
+            border: 1px solid #eee;
+            transition: transform 0.2s;
+        }
+        .grid-item:hover { transform: scale(1.1); z-index: 2; border-color: #ccc; }
+
+        .red-zone .grid-item { color: #d32f2f; background-color: #fff5f5; }
+        .red-zone .grid-item.hot { background-color: #ff8787; color: white; border-color: #ff8787; }
+        .red-zone .grid-item.cold { background-color: #a5d8ff; color: #1864ab; border-color: #a5d8ff; }
+
+        .blue-zone .grid-item { color: #1971c2; background-color: #e7f5ff; }
+        .blue-zone .grid-item.hot { background-color: #4dabf7; color: white; border-color: #4dabf7; }
+        .blue-zone .grid-item.cold { background-color: #d0ebff; color: #1864ab; border-color: #d0ebff; }
+
+        .omission-tag {
+            font-size: 10px;
+            position: absolute;
+            bottom: 2px;
+            font-weight: normal;
+            opacity: 0.7;
+        }
+
+        .control-panel {
+            padding: 20px;
+            background-color: #fcfcfc;
+            text-align: center;
+        }
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .mode-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .mode-btn.active {
+            background-color: #e03131;
+            color: white;
+            border-color: #e03131;
+        }
+
+        .action-btn {
+            background-color: #e03131;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(224, 49, 49, 0.4);
+            transition: transform 0.1s;
+        }
+        .action-btn:active { transform: scale(0.95); }
+        .action-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .result-display {
+            min-height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+            background: #fff;
+            border: 2px dashed #eee;
+            border-radius: 10px;
+        }
+        .lotto-ball {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            box-shadow: inset -2px -2px 6px rgba(0,0,0,0.2);
+        }
+        .ball-red { background: radial-gradient(circle at 30% 30%, #ff6b6b, #d32f2f); }
+        .ball-blue { background: radial-gradient(circle at 30% 30%, #4dabf7, #1971c2); }
+
+        .history-section {
+            padding: 20px;
+            background-color: #f1f3f5;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .history-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .history-section-header span { font-weight: bold; color: #555; }
+        .clear-history-btn {
+            font-size: 12px;
+            color: #999;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+        .history-item {
+            background: white;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+        .history-nums span { margin-right: 5px; font-weight: bold; }
+        .history-nums .r { color: #d32f2f; }
+        .history-nums .b { color: #1971c2; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <h1>📊 大乐透真实数据高级选号器</h1>
+        <p id="dataSourceTip">数据来源：中国体育彩票</p>
+    </div>
+
+    <div class="analysis-panel">
+        <div class="panel-title">
+            <span>🔴 前区走势 (35选5)</span>
+            <span class="legend">🔥红色=热号 | ❄️蓝色=冷号</span>
+        </div>
+        <div class="number-grid red-zone" id="redGrid"></div>
+
+        <div class="panel-title">
+            <span>🔵 后区走势 (12选2)</span>
+        </div>
+        <div class="number-grid blue-zone" id="blueGrid"></div>
+    </div>
+
+    <div class="control-panel">
+        <div class="result-display" id="resultDisplay">
+            <span style="color:#999">正在加载真实开奖数据...</span>
+        </div>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" onclick="setMode('random')">🎲 纯随机</button>
+            <button class="mode-btn" onclick="setMode('hot')">🔥 追热号</button>
+            <button class="mode-btn" onclick="setMode('cold')">❄️ 守冷号</button>
+        </div>
+
+        <button class="action-btn" id="generateBtn" onclick="generateNumbers()" disabled>立即选号</button>
+    </div>
+
+    <div class="history-section">
+        <div class="history-section-header">
+            <span>📜 选号记录</span>
+            <button class="clear-history-btn" onclick="clearHistory()">清空</button>
+        </div>
+        <div id="historyList"></div>
+    </div>
+</div>
+
+<script>
+    // ==================== 真实数据接口 ====================
+    async function fetchRealDltHistory(pageCount = 2) {
+        const allIssues = [];
+
+        for (let page = 1; page <= pageCount; page++) {
+            const url =
+                "https://webapi.sporttery.cn/gateway/lottery/getHistoryPageListV1.qry" +
+                "?gameNo=85" +
+                "&provinceId=0" +
+                "&pageSize=30" +
+                "&isVerify=1" +
+                "&pageNo=" + page;
+
+            try {
+                const res = await fetch(url, {
+                    headers: { "Accept": "application/json" }
+                });
+
+                if (!res.ok) throw new Error("状态码：" + res.status);
+
+                const json = await res.json();
+                const list = json?.value?.list || json?.data?.list || json?.list || [];
+
+                for (const item of list) {
+                    const lotteryResult = item.lotteryDrawResult || "";
+                    const parts = lotteryResult.split(":");
+                    if (parts.length !== 2) continue;
+
+                    const front = parts[0].trim().split(/\s+/).map(Number);
+                    const back = parts[1].trim().split(/\s+/).map(Number);
+
+                    if (front.length !== 5 || back.length !== 2) continue;
+
+                    allIssues.push({
+                        expect: item.lotteryDrawIssue || "",
+                        date: item.lotteryDrawTime || "",
+                        red: front,
+                        blue: back
+                    });
+                }
+            } catch (err) {
+                console.error("第" + page + "页数据加载失败：", err);
+            }
+        }
+
+        return allIssues;
+    }
+
+    function generateMockData(count = 50) {
+        const data = [];
+        for (let i = 0; i < count; i++) {
+            let r = Array.from({length:35}, (_,k)=>k+1).sort(()=>0.5-Math.random()).slice(0,5);
+            let b = Array.from({length:12}, (_,k)=>k+1).sort(()=>0.5-Math.random()).slice(0,2);
+            data.push({ red: r, blue: b });
+        }
+        return data;
+    }
+
+    // ==================== 数据分析 ====================
+    let redStats = {};
+    let blueStats = {};
+    let historyData = [];
+
+    function analyzeData(data) {
+        historyData = data;
+        for (let i = 1; i <= 35; i++) redStats[i] = { count: 0, omission: 0 };
+        for (let i = 1; i <= 12; i++) blueStats[i] = { count: 0, omission: 0 };
+
+        data.forEach(issue => {
+            issue.red.forEach(n => { if (redStats[n]) redStats[n].count++; });
+            issue.blue.forEach(n => { if (blueStats[n]) blueStats[n].count++; });
+        });
+
+        for (let i = 1; i <= 35; i++) {
+            let index = data.findIndex(d => d.red.includes(i));
+            redStats[i].omission = index === -1 ? data.length : index;
+        }
+        for (let i = 1; i <= 12; i++) {
+            let index = data.findIndex(d => d.blue.includes(i));
+            blueStats[i].omission = index === -1 ? data.length : index;
+        }
+    }
+
+    // ==================== 渲染面板 ====================
+    function renderGrid() {
+        const redContainer = document.getElementById('redGrid');
+        const blueContainer = document.getElementById('blueGrid');
+        redContainer.innerHTML = '';
+        blueContainer.innerHTML = '';
+
+        const redAvgCount = historyData.length * (5 / 35);
+        const blueAvgCount = historyData.length * (2 / 12);
+
+        for (let i = 1; i <= 35; i++) {
+            let stat = redStats[i];
+            let className = 'grid-item';
+            if (stat.count >= redAvgCount + 2) className += ' hot';
+            else if (stat.count <= redAvgCount - 2) className += ' cold';
+
+            let div = document.createElement('div');
+            div.className = className;
+            div.innerHTML = `${i < 10 ? '0' + i : i}<span class="omission-tag">遗${stat.omission}</span>`;
+            redContainer.appendChild(div);
+        }
+
+        for (let i = 1; i <= 12; i++) {
+            let stat = blueStats[i];
+            let className = 'grid-item';
+            if (stat.count >= blueAvgCount + 1) className += ' hot';
+            else if (stat.count <= blueAvgCount - 1) className += ' cold';
+
+            let div = document.createElement('div');
+            div.className = className;
+            div.innerHTML = `${i < 10 ? '0' + i : i}<span class="omission-tag">遗${stat.omission}</span>`;
+            blueContainer.appendChild(div);
+        }
+    }
+
+    // ==================== 智能选号 ====================
+    let currentMode = 'random';
+
+    function setMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+
+    function weightedSelect(totalNum, selectCount, statsObj, mode) {
+        let pool = [];
+        for (let i = 1; i <= totalNum; i++) pool.push(i);
+
+        if (mode === 'random') {
+            return pool.sort(() => 0.5 - Math.random()).slice(0, selectCount);
+        }
+
+        let weights = pool.map(num => {
+            let s = statsObj[num];
+            if (!s) return 1;
+            if (mode === 'hot') return s.count + 1;
+            if (mode === 'cold') return s.omission + 1;
+            return 1;
+        });
+
+        let selected = new Set();
+        while (selected.size < selectCount) {
+            let totalWeight = 0;
+            pool.forEach((num, idx) => {
+                if (!selected.has(num)) totalWeight += weights[idx];
+            });
+
+            let random = Math.random() * totalWeight;
+            let currentSum = 0;
+
+            for (let i = 0; i < pool.length; i++) {
+                if (selected.has(pool[i])) continue;
+                currentSum += weights[i];
+                if (random <= currentSum) {
+                    selected.add(pool[i]);
+                    break;
+                }
+            }
+        }
+        return Array.from(selected);
+    }
+
+    function generateNumbers() {
+        const display = document.getElementById('resultDisplay');
+        const btn = document.getElementById('generateBtn');
+        btn.disabled = true;
+        display.innerHTML = '<span style="color:#e03131">正在分析数据...</span>';
+
+        setTimeout(() => {
+            let reds = weightedSelect(35, 5, redStats, currentMode);
+            reds.sort((a, b) => a - b);
+
+            let blues = weightedSelect(12, 2, blueStats, currentMode);
+            blues.sort((a, b) => a - b);
+
+            let html = '';
+            reds.forEach(n => html += `<div class="lotto-ball ball-red">${n < 10 ? '0' + n : n}</div>`);
+            blues.forEach(n => html += `<div class="lotto-ball ball-blue">${n < 10 ? '0' + n : n}</div>`);
+            display.innerHTML = html;
+
+            addToHistory(reds, blues);
+            btn.disabled = false;
+        }, 500);
+    }
+
+    function addToHistory(reds, blues) {
+        const list = document.getElementById('historyList');
+        const time = new Date().toLocaleTimeString();
+        let rHtml = reds.map(n => `<span class="r">${n < 10 ? '0' + n : n}</span>`).join(' ');
+        let bHtml = blues.map(n => `<span class="b">${n < 10 ? '0' + n : n}</span>`).join(' ');
+
+        let item = document.createElement('div');
+        item.className = 'history-item';
+        item.innerHTML = `
+            <span style="color:#999; font-size:12px;">${time}</span>
+            <div class="history-nums">${rHtml} + ${bHtml}</div>
+        `;
+        list.prepend(item);
+    }
+
+    function clearHistory() {
+        document.getElementById('historyList').innerHTML = '';
+    }
+
+    // ==================== 初始化 ====================
+    async function initApp() {
+        const display = document.getElementById('resultDisplay');
+        const btn = document.getElementById('generateBtn');
+        const tip = document.getElementById('dataSourceTip');
+
+        try {
+            const realData = await fetchRealDltHistory(2);
+
+            if (realData.length > 0) {
+                analyzeData(realData);
+                renderGrid();
+                display.innerHTML = '<span style="color:#999">数据加载完成，点击按钮开始选号</span>';
+                tip.textContent = `已加载 ${realData.length} 期真实开奖数据`;
+                btn.disabled = false;
+            } else {
+                throw new Error("数据为空");
+            }
+        } catch (e) {
+            console.error("真实数据加载失败，切换为模拟数据：", e);
+            const mockData = generateMockData(50);
+            analyzeData(mockData);
+            renderGrid();
+            display.innerHTML = '<span style="color:#e03131">真实数据加载失败，已使用模拟数据</span>';
+            tip.textContent = "当前为模拟数据（接口请求受限）";
+            btn.disabled = false;
+        }
+    }
+
+    initApp();
+</script>
+
+</body>
+</html>
